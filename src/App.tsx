@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Volume2, Keyboard, Activity, Zap, Play, Square, Clock, Settings2, Sliders, Edit3, X, Smartphone } from 'lucide-react';
+import { Volume2, Activity, Zap, Play, Square, Clock, Settings2, Sliders, Edit3, X, Smartphone, ArrowRight, ArrowLeft } from 'lucide-react';
 
 // --- TYPES ---
 type SoundEngine = 'synth' | 'sample';
@@ -62,6 +62,9 @@ function App() {
   const [bpm, setBpm] = useState(120);
   const [currentStep, setCurrentStep] = useState(0);
   const [sequencerGrid, setSequencerGrid] = useState(INITIAL_GRID);
+  
+  // Mobile Pagination State (0 = Steps 1-8, 1 = Steps 9-16)
+  const [mobilePage, setMobilePage] = useState<0 | 1>(0);
 
   // --- GHOST CLICK PREVENTION ---
   const lastTouchTimeRef = useRef<number>(0);
@@ -93,7 +96,7 @@ function App() {
     
     // Visual Trigger
     setActivePadId(pad.id);
-    setTimeout(() => setActivePadId(null), 80); // Slightly faster visual reset
+    setTimeout(() => setActivePadId(null), 80);
 
     const t = ctx.currentTime;
     const gainNode = ctx.createGain();
@@ -190,8 +193,8 @@ function App() {
 
   // --- HANDLER WRAPPERS ---
   const handleTouchStart = (e: React.TouchEvent, pad: Pad) => {
-    e.preventDefault(); // Stop iOS from firing emulated mouse events
-    lastTouchTimeRef.current = Date.now(); // Mark time
+    e.preventDefault();
+    lastTouchTimeRef.current = Date.now();
     initAudio();
     
     if (editMode) {
@@ -202,9 +205,7 @@ function App() {
   };
 
   const handleMouseDown = (e: React.MouseEvent, pad: Pad) => {
-    // IGNORE mouse event if a touch happened less than 500ms ago
     if (Date.now() - lastTouchTimeRef.current < 500) return;
-    
     initAudio();
     if (editMode) {
       setSelectedPadId(pad.id);
@@ -301,9 +302,7 @@ function App() {
                     {pads.map((pad) => (
                         <button
                             key={pad.id}
-                            // 1. TOUCH: Handle touch, set timestamp
                             onTouchStart={(e) => handleTouchStart(e, pad)}
-                            // 2. MOUSE: Check timestamp to avoid double-trigger
                             onMouseDown={(e) => handleMouseDown(e, pad)}
                             className={`
                                 relative group rounded-xl border transition-all duration-75 
@@ -352,19 +351,72 @@ function App() {
                         </div>
                     </div>
                 ) : (
+                    // --- SEQUENCER PANEL ---
                     <div className={`bg-slate-900/50 p-6 rounded-2xl border border-slate-800 transition-opacity ${editMode ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                             <h3 className="text-xl font-bold flex items-center gap-2"><Activity className="text-cyan-500" /> Sequencer</h3>
-                            <button onClick={() => setSequencerGrid(INITIAL_GRID)} className="text-xs text-red-400 hover:text-red-300 border border-red-900 bg-red-900/20 px-3 py-1 rounded">CLEAR PATTERN</button>
+                            
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                {/* MOBILE PAGE TOGGLE */}
+                                <div className="flex lg:hidden bg-slate-800 rounded-lg p-1 border border-slate-700 w-full sm:w-auto">
+                                    <button 
+                                        onClick={() => setMobilePage(0)}
+                                        className={`flex-1 sm:flex-none px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 0 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        <ArrowLeft size={12} /> Steps 1-8
+                                    </button>
+                                    <button 
+                                        onClick={() => setMobilePage(1)}
+                                        className={`flex-1 sm:flex-none px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 1 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        Steps 9-16 <ArrowRight size={12} />
+                                    </button>
+                                </div>
+
+                                <button onClick={() => setSequencerGrid(INITIAL_GRID)} className="hidden sm:block text-xs text-red-400 hover:text-red-300 border border-red-900 bg-red-900/20 px-3 py-1 rounded whitespace-nowrap">CLEAR</button>
+                            </div>
                         </div>
-                        <div className="flex flex-col gap-2 overflow-x-auto pb-4">
-                            <div className="flex gap-1 ml-24 mb-2">{Array(16).fill(0).map((_, i) => (<div key={i} className={`w-6 text-center text-[10px] font-mono ${i === currentStep ? 'text-cyan-400 font-bold' : 'text-slate-600'}`}>{i + 1}</div>))}</div>
+
+                        {/* GRID WITH RESPONSIVE DISPLAY */}
+                        <div className="flex flex-col gap-2 pb-4">
+                            {/* Step Numbers Header */}
+                            <div className="flex gap-1 ml-24 mb-2">
+                                {Array(16).fill(0).map((_, i) => (
+                                    // Logic: Only show steps that match the current mobile page, OR show all if on desktop (lg breakpoint)
+                                    <div 
+                                        key={i} 
+                                        className={`
+                                            w-8 text-center text-[10px] font-mono 
+                                            ${i === currentStep ? 'text-cyan-400 font-bold' : 'text-slate-600'}
+                                            ${/* Mobile Hiding Logic */ ''}
+                                            ${(i < 8 && mobilePage === 1) ? 'hidden lg:block' : ''} 
+                                            ${(i >= 8 && mobilePage === 0) ? 'hidden lg:block' : ''}
+                                        `}
+                                    >
+                                        {i + 1}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Rows */}
                             {pads.map((pad) => (
                                 <div key={pad.id} className="flex items-center gap-4 group hover:bg-slate-800/50 rounded pr-2">
                                     <div className={`w-20 text-xs font-bold text-right truncate ${pad.color.split(' ').pop()?.replace('text-', 'text-')}`}>{pad.label}</div>
                                     <div className="flex gap-1">
                                         {sequencerGrid[pad.id].map((isActive, step) => (
-                                            <button key={step} onClick={(e) => { e.stopPropagation(); setSequencerGrid(prev => ({...prev, [pad.id]: prev[pad.id].map((v, i) => i === step ? !v : v)})); }} className={`w-6 h-8 rounded-sm border transition-all ${step === currentStep ? 'border-white scale-110 z-10' : 'border-transparent'} ${isActive ? `bg-cyan-500 hover:bg-cyan-400` : `bg-slate-800 hover:bg-slate-700`} ${step % 4 === 0 ? 'ml-1' : ''}`}/>
+                                            <button
+                                                key={step}
+                                                onClick={(e) => { e.stopPropagation(); setSequencerGrid(prev => ({...prev, [pad.id]: prev[pad.id].map((v, i) => i === step ? !v : v)})); }}
+                                                className={`
+                                                    w-8 h-10 rounded-sm border transition-all
+                                                    ${step === currentStep ? 'border-white scale-110 z-10' : 'border-transparent'}
+                                                    ${isActive ? `bg-cyan-500 hover:bg-cyan-400` : `bg-slate-800 hover:bg-slate-700`}
+                                                    ${step % 4 === 0 ? 'ml-1' : ''}
+                                                    ${/* Mobile Hiding Logic */ ''}
+                                                    ${(step < 8 && mobilePage === 1) ? 'hidden lg:block' : ''} 
+                                                    ${(step >= 8 && mobilePage === 0) ? 'hidden lg:block' : ''}
+                                                `}
+                                            />
                                         ))}
                                     </div>
                                 </div>
