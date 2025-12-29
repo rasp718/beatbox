@@ -1,0 +1,22 @@
+{
+    "name": "PulsePad Beat Box",
+    "short_name": "PulsePad",
+    "description": "Neon Drum Synthesizer and Sequencer",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#020617",
+    "theme_color": "#020617",
+    "orientation": "portrait",
+    "icons": [
+      {
+        "src": "/icon.png",
+        "type": "image/png",
+        "sizes": "192x192"
+      },
+      {
+        "src": "/icon.png",
+        "type": "image/png",
+        "sizes": "512x512"
+      }
+    ]
+  }
