@@ -57,7 +57,6 @@ function App() {
   // Mode States
   const [editMode, setEditMode] = useState(false);
   const [selectedPadId, setSelectedPadId] = useState<number | null>(null);
-  const [showSequencer, setShowSequencer] = useState(true);
 
   // Sequencer States
   const [isPlaying, setIsPlaying] = useState(false);
@@ -295,16 +294,29 @@ function App() {
                     {pads.map((pad) => (
                         <button
                             key={pad.id}
-                            onMouseDown={() => {
+                            // --- IPHONE FIX: onTouchStart with preventDefault ---
+                            onTouchStart={(e) => {
+                                e.preventDefault();
+                                if (!audioUnlocked) initAudio();
                                 if (editMode) {
                                     setSelectedPadId(pad.id);
                                 } else {
                                     playSound(pad);
                                 }
                             }}
+                            // --- DESKTOP FIX: onMouseDown ---
+                            onMouseDown={(e) => {
+                                if (!audioUnlocked) initAudio();
+                                if (editMode) {
+                                    setSelectedPadId(pad.id);
+                                } else {
+                                    playSound(pad);
+                                }
+                            }}
+                            // --- CLASS: touch-none to prevent scrolling ---
                             className={`
                                 relative group rounded-xl border transition-all duration-75 
-                                flex flex-col items-center justify-center overflow-hidden
+                                flex flex-col items-center justify-center overflow-hidden touch-none select-none
                                 ${pad.color}
                                 ${activePadId === pad.id ? 'bg-slate-800 scale-95 shadow-[0_0_30px_currentColor] border-white text-white z-10' : ''}
                                 ${editMode && selectedPadId === pad.id ? 'ring-4 ring-purple-500 scale-95 z-20 bg-slate-800' : 'bg-slate-900 border-slate-800 opacity-90 hover:opacity-100 hover:border-slate-600'}
