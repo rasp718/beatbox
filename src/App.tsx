@@ -46,6 +46,58 @@ DEFAULT_PADS.forEach(pad => { INITIAL_GRID[pad.id] = Array(16).fill(false); });
 
 // --- BEAT PRESETS ---
 const BEAT_PRESETS: Record<string, { label: string, bpm: number, grid: Record<number, boolean[]> }> = {
+  hiphop: {
+    label: 'Hip Hop: Classic',
+    bpm: 90,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, false, true, false, false, true, false, false, false, true, false, false, true, false, false], // Kick
+      9:  [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare
+      4:  [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true],     // HiHat
+    }
+  },
+  boombap2: {
+    label: 'Hip Hop: Boom Bap',
+    bpm: 88,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, true, false, false, false, false, false, false, false, true, false, false, true, false, false], // Kick pattern
+      9:  [false, false, false, false, true, false, false, true, false, false, false, false, true, false, false, false], // Snare (ghost notes)
+      4:  [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true], // 8th notes
+    }
+  },
+  westcoast: {
+    label: 'Hip Hop: West Coast',
+    bpm: 95,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, false, false, false, false, true, false, true, false, false, false, false, false, true, false], 
+      8:  [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Clap
+      3:  [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], // Open hat
+    }
+  },
+  trap: {
+    label: 'Trap: Standard',
+    bpm: 140,
+    grid: {
+      ...INITIAL_GRID,
+      15: [true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false], // Sub Bass
+      10: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare 2
+      4:  [true, true, true, false, true, true, true, false, true, true, true, true, true, false, true, true],           // Fast Hats
+      11: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false],   // Rim
+    }
+  },
+  dirtysouth: {
+    label: 'Trap: Dirty South',
+    bpm: 140,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, true, false], 
+      10: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare
+      1:  [true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], // Crash on 1
+      4:  [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], 
+    }
+  },
   house: {
     label: 'House / Techno',
     bpm: 128,
@@ -55,27 +107,6 @@ const BEAT_PRESETS: Record<string, { label: string, bpm: number, grid: Record<nu
       3:  [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], // Open Hat
       8:  [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Clap
       4:  [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false],     // HiHat
-    }
-  },
-  hiphop: {
-    label: 'Classic Hip Hop',
-    bpm: 90,
-    grid: {
-      ...INITIAL_GRID,
-      13: [true, false, false, true, false, false, true, false, false, false, true, false, false, true, false, false], // Kick
-      9:  [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare
-      4:  [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true],     // HiHat
-    }
-  },
-  trap: {
-    label: 'Trap / Drill',
-    bpm: 140,
-    grid: {
-      ...INITIAL_GRID,
-      15: [true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false], // Sub Bass
-      10: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare 2
-      4:  [true, true, true, false, true, true, true, false, true, true, true, true, true, false, true, true],           // Fast Hats
-      11: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false],   // Rim
     }
   },
   reggaeton: {
@@ -111,53 +142,29 @@ const BEAT_PRESETS: Record<string, { label: string, bpm: number, grid: Record<nu
 };
 
 // --- KIT TUNING PRESETS ---
-// Defines relative changes to pitch/decay for pad types
 const KIT_PRESETS: Record<string, { label: string, config: Partial<Pad> }> = {
-  default: { label: 'Default Kit', config: { pitch: 1, decay: 1 } }, // Relative base
-  tight: { 
-    label: 'Tight / Funk', 
-    config: { pitch: 1.3, decay: 0.2 } 
-  },
-  deep: { 
-    label: 'Deep / Dark', 
-    config: { pitch: 0.7, decay: 0.8 } 
-  },
-  chip: { 
-    label: '8-Bit / Chip', 
-    config: { pitch: 1.8, decay: 0.1 } 
-  },
-  industrial: { 
-    label: 'Industrial', 
-    config: { pitch: 0.5, decay: 0.2 } 
-  }
+  default: { label: 'Default Kit', config: { pitch: 1, decay: 1 } }, 
+  tight: { label: 'Tight / Funk', config: { pitch: 1.3, decay: 0.2 } },
+  deep: { label: 'Deep / Dark', config: { pitch: 0.7, decay: 0.8 } },
+  chip: { label: '8-Bit / Chip', config: { pitch: 1.8, decay: 0.1 } },
+  industrial: { label: 'Industrial', config: { pitch: 0.5, decay: 0.2 } }
 };
 
 function App() {
   const audioCtxRef = useRef<AudioContext | null>(null);
-  
-  // --- STATE ---
   const [pads, setPads] = useState<Pad[]>(DEFAULT_PADS);
   const [activePadId, setActivePadId] = useState<number | null>(null);
   const [volume, setVolume] = useState(0.8);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
-  
-  // Mode States
   const [editMode, setEditMode] = useState(false);
   const [selectedPadId, setSelectedPadId] = useState<number | null>(null);
-
-  // Sequencer States
   const [isPlaying, setIsPlaying] = useState(false);
   const [bpm, setBpm] = useState(120);
   const [currentStep, setCurrentStep] = useState(0);
   const [sequencerGrid, setSequencerGrid] = useState(INITIAL_GRID);
-  
-  // Mobile Pagination State (0 = Steps 1-8, 1 = Steps 9-16)
   const [mobilePage, setMobilePage] = useState<0 | 1>(0);
-
-  // --- GHOST CLICK PREVENTION ---
   const lastTouchTimeRef = useRef<number>(0);
 
-  // --- AUDIO INIT ---
   const initAudio = () => {
     if (!audioCtxRef.current) {
       const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -165,27 +172,20 @@ function App() {
     }
     const ctx = audioCtxRef.current!;
     if (ctx.state === 'suspended') ctx.resume();
-
-    // Silent buffer fix for iOS
     const buffer = ctx.createBuffer(1, 1, 22050);
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
     source.start(0);
-
     setAudioUnlocked(true);
   };
 
-  // --- AUDIO ENGINE ---
   const playSound = useCallback((pad: Pad) => {
     if (!audioCtxRef.current) initAudio();
     const ctx = audioCtxRef.current!;
     if (!ctx) return;
-    
-    // Visual Trigger
     setActivePadId(pad.id);
     setTimeout(() => setActivePadId(null), 80);
-
     const t = ctx.currentTime;
     const gainNode = ctx.createGain();
     gainNode.connect(ctx.destination);
@@ -201,8 +201,7 @@ function App() {
         osc.connect(gainNode);
         osc.start(t);
         osc.stop(t + pad.decay);
-      } 
-      else if (pad.type === 'snare') {
+      } else if (pad.type === 'snare') {
         const noise = ctx.createBufferSource();
         const bufferSize = ctx.sampleRate * pad.decay;
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -221,8 +220,7 @@ function App() {
         osc.connect(gainNode);
         osc.start(t);
         osc.stop(t + 0.2);
-      }
-      else if (pad.type === 'hihat' || pad.type === 'openhat') {
+      } else if (pad.type === 'hihat' || pad.type === 'openhat') {
         const bufferSize = ctx.sampleRate * pad.decay;
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -237,8 +235,7 @@ function App() {
         gainNode.gain.setValueAtTime(volume * 0.8, t);
         gainNode.gain.exponentialRampToValueAtTime(0.01, t + pad.decay);
         noise.start(t);
-      }
-      else if (pad.type === 'tom') {
+      } else if (pad.type === 'tom') {
         const osc = ctx.createOscillator();
         osc.frequency.setValueAtTime(200 * pad.pitch, t);
         osc.frequency.exponentialRampToValueAtTime(100, t + pad.decay);
@@ -247,8 +244,7 @@ function App() {
         osc.connect(gainNode);
         osc.start(t);
         osc.stop(t + pad.decay);
-      }
-      else if (pad.type === 'clap') {
+      } else if (pad.type === 'clap') {
         const bufferSize = ctx.sampleRate * 2;
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -264,8 +260,7 @@ function App() {
         gainNode.gain.linearRampToValueAtTime(volume, t + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.01, t + pad.decay);
         noise.start(t);
-      }
-      else if (pad.type === 'fx' || pad.type === 'crash') {
+      } else if (pad.type === 'fx' || pad.type === 'crash') {
         const osc = ctx.createOscillator();
         osc.type = pad.type === 'crash' ? 'square' : 'sawtooth';
         osc.frequency.setValueAtTime(800 * pad.pitch, t);
@@ -279,26 +274,19 @@ function App() {
     }
   }, [volume]);
 
-  // --- HANDLER WRAPPERS ---
   const handleTouchStart = (e: React.TouchEvent, pad: Pad) => {
     e.preventDefault();
     lastTouchTimeRef.current = Date.now();
     initAudio();
-    if (editMode) {
-      setSelectedPadId(pad.id);
-    } else {
-      playSound(pad);
-    }
+    if (editMode) setSelectedPadId(pad.id);
+    else playSound(pad);
   };
 
   const handleMouseDown = (e: React.MouseEvent, pad: Pad) => {
     if (Date.now() - lastTouchTimeRef.current < 500) return;
     initAudio();
-    if (editMode) {
-      setSelectedPadId(pad.id);
-    } else {
-      playSound(pad);
-    }
+    if (editMode) setSelectedPadId(pad.id);
+    else playSound(pad);
   };
 
   const loadPreset = (presetKey: string) => {
@@ -312,29 +300,19 @@ function App() {
   const loadKit = (kitKey: string) => {
     const kit = KIT_PRESETS[kitKey];
     if (kit) {
-      // Apply the pitch/decay multiplier to defaults
       setPads(prev => prev.map((pad, idx) => {
-        // Find default values for this specific pad index to avoid drift
         const def = DEFAULT_PADS[idx]; 
-        
         let newPitch = def.pitch;
         let newDecay = def.decay;
-
         if (kitKey !== 'default') {
             newPitch = def.pitch * kit.config.pitch!;
             newDecay = def.decay * kit.config.decay!;
         }
-        
-        return {
-            ...pad,
-            pitch: newPitch,
-            decay: newDecay
-        };
+        return { ...pad, pitch: newPitch, decay: newDecay };
       }));
     }
   };
 
-  // --- KEYBOARD LISTENERS ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
@@ -349,7 +327,6 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [playSound, pads]);
 
-  // --- SEQUENCER CLOCK ---
   useEffect(() => {
     let interval: number;
     if (isPlaying) {
@@ -378,7 +355,6 @@ function App() {
         onTouchStart={initAudio}
         className="min-h-screen bg-slate-950 flex flex-col items-center p-6 text-white select-none overflow-y-auto"
     >
-        {/* --- HEADER --- */}
         <div className="w-full max-w-6xl flex flex-wrap gap-4 justify-between items-end mb-8 border-b border-slate-800 pb-4 sticky top-0 bg-slate-950/80 backdrop-blur z-50">
             <div>
                 <h1 className="text-4xl font-black italic tracking-tighter flex items-center gap-2">
@@ -413,7 +389,6 @@ function App() {
             </div>
         </div>
 
-        {/* --- MAIN LAYOUT --- */}
         <div className="flex flex-col lg:flex-row gap-6 w-full max-w-6xl items-start">
             <div className="relative">
                 {editMode && <div className="absolute -top-8 left-0 text-purple-400 text-xs font-bold animate-pulse">SELECT A PAD TO EDIT</div>}
@@ -441,7 +416,6 @@ function App() {
                 </div>
             </div>
 
-            {/* --- RIGHT PANEL --- */}
             <div className="flex-1 w-full min-h-[500px] flex flex-col gap-4">
                 {editMode && selectedPad ? (
                     <div className="bg-slate-900 border border-purple-500/50 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-right-4">
@@ -471,19 +445,17 @@ function App() {
                         </div>
                     </div>
                 ) : (
-                    // --- SEQUENCER PANEL ---
                     <div className={`bg-slate-900/50 p-6 rounded-2xl border border-slate-800 transition-opacity ${editMode ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                             <h3 className="text-xl font-bold flex items-center gap-2"><Activity className="text-cyan-500" /> Sequencer</h3>
                             
                             <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center">
-                                {/* PRESET SELECTOR (BEATS) */}
                                 <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
                                     <Music size={14} className="ml-2 text-slate-400" />
                                     <select 
                                         onChange={(e) => {
                                             if(e.target.value) loadPreset(e.target.value);
-                                            e.target.value = ""; // Reset
+                                            e.target.value = ""; 
                                         }}
                                         className="bg-transparent text-xs font-bold text-slate-300 focus:outline-none p-1 w-24 sm:w-auto"
                                     >
@@ -493,14 +465,12 @@ function App() {
                                         ))}
                                     </select>
                                 </div>
-
-                                 {/* KIT SELECTOR (NEW) */}
                                  <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
                                     <Speaker size={14} className="ml-2 text-slate-400" />
                                     <select 
                                         onChange={(e) => {
                                             if(e.target.value) loadKit(e.target.value);
-                                            e.target.value = ""; // Reset
+                                            e.target.value = ""; 
                                         }}
                                         className="bg-transparent text-xs font-bold text-slate-300 focus:outline-none p-1 w-24 sm:w-auto"
                                     >
@@ -511,7 +481,6 @@ function App() {
                                     </select>
                                 </div>
 
-                                {/* MOBILE PAGE TOGGLE */}
                                 <div className="flex lg:hidden bg-slate-800 rounded-lg p-1 border border-slate-700 w-auto">
                                     <button onClick={() => setMobilePage(0)} className={`px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 0 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}>1-8</button>
                                     <button onClick={() => setMobilePage(1)} className={`px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 1 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}>9-16</button>
@@ -521,15 +490,13 @@ function App() {
                             </div>
                         </div>
 
-                        {/* GRID WITH RESPONSIVE DISPLAY */}
                         <div className="flex flex-col gap-2 pb-4">
-                            {/* Step Numbers Header */}
-                            <div className="flex gap-1 ml-24 mb-2">
+                            <div className="flex gap-1 ml-20 mb-2">
                                 {Array(16).fill(0).map((_, i) => (
                                     <div 
                                         key={i} 
                                         className={`
-                                            w-8 text-center text-[10px] font-mono 
+                                            w-7 lg:w-8 text-center text-[10px] font-mono 
                                             ${i === currentStep ? 'text-cyan-400 font-bold' : 'text-slate-600'}
                                             ${(i < 8 && mobilePage === 1) ? 'hidden lg:block' : ''} 
                                             ${(i >= 8 && mobilePage === 0) ? 'hidden lg:block' : ''}
@@ -540,17 +507,16 @@ function App() {
                                 ))}
                             </div>
 
-                            {/* Rows */}
                             {pads.map((pad) => (
-                                <div key={pad.id} className="flex items-center gap-4 group hover:bg-slate-800/50 rounded pr-2">
-                                    <div className={`w-20 text-xs font-bold text-right truncate ${pad.color.split(' ').pop()?.replace('text-', 'text-')}`}>{pad.label}</div>
+                                <div key={pad.id} className="flex items-center gap-3 lg:gap-4 group hover:bg-slate-800/50 rounded pr-2">
+                                    <div className={`w-16 lg:w-20 text-xs font-bold text-right truncate ${pad.color.split(' ').pop()?.replace('text-', 'text-')}`}>{pad.label}</div>
                                     <div className="flex gap-1">
                                         {sequencerGrid[pad.id].map((isActive, step) => (
                                             <button
                                                 key={step}
                                                 onClick={(e) => { e.stopPropagation(); setSequencerGrid(prev => ({...prev, [pad.id]: prev[pad.id].map((v, i) => i === step ? !v : v)})); }}
                                                 className={`
-                                                    w-8 h-10 rounded-sm border transition-all
+                                                    w-7 lg:w-8 h-10 rounded-sm border transition-all
                                                     ${step === currentStep ? 'border-white scale-110 z-10' : 'border-transparent'}
                                                     ${isActive ? `bg-cyan-500 hover:bg-cyan-400` : `bg-slate-800 hover:bg-slate-700`}
                                                     ${step % 4 === 0 ? 'ml-1' : ''}
