@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Volume2, Activity, Zap, Play, Square, Clock, Settings2, Sliders, Edit3, X, Smartphone, ArrowRight, ArrowLeft, Music } from 'lucide-react';
+import { Volume2, Activity, Zap, Play, Square, Clock, Settings2, Sliders, Edit3, X, Smartphone, ArrowRight, ArrowLeft, Music, Speaker } from 'lucide-react';
 
 // --- TYPES ---
 type SoundEngine = 'synth' | 'sample';
@@ -44,8 +44,8 @@ const DEFAULT_PADS: Pad[] = [
 const INITIAL_GRID: Record<number, boolean[]> = {};
 DEFAULT_PADS.forEach(pad => { INITIAL_GRID[pad.id] = Array(16).fill(false); });
 
-// --- PRESETS ---
-const PRESETS: Record<string, { label: string, bpm: number, grid: Record<number, boolean[]> }> = {
+// --- BEAT PRESETS ---
+const BEAT_PRESETS: Record<string, { label: string, bpm: number, grid: Record<number, boolean[]> }> = {
   house: {
     label: 'House / Techno',
     bpm: 128,
@@ -77,6 +77,58 @@ const PRESETS: Record<string, { label: string, bpm: number, grid: Record<number,
       4:  [true, true, true, false, true, true, true, false, true, true, true, true, true, false, true, true],           // Fast Hats
       11: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false],   // Rim
     }
+  },
+  reggaeton: {
+    label: 'Reggaeton',
+    bpm: 96,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], // Kick
+      9:  [false, false, false, true, false, false, true, false, false, false, false, true, false, false, true, false], // Snare (Dem Bow)
+      4:  [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],             // Shaker
+    }
+  },
+  dnb: {
+    label: 'Drum & Bass',
+    bpm: 174,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false], // Kick
+      9:  [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare
+      2:  [true, false, true, true, false, true, true, false, true, false, true, true, false, true, true, false],     // Ride
+    }
+  },
+  lofi: {
+    label: 'Lo-Fi Chill',
+    bpm: 80,
+    grid: {
+      ...INITIAL_GRID,
+      14: [true, false, false, false, false, false, false, true, false, false, true, false, false, false, false, false], // Soft Kick
+      11: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, true],  // Rim
+      4:  [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true],       // Hat
+    }
+  }
+};
+
+// --- KIT TUNING PRESETS ---
+// Defines relative changes to pitch/decay for pad types
+const KIT_PRESETS: Record<string, { label: string, config: Partial<Pad> }> = {
+  default: { label: 'Default Kit', config: { pitch: 1, decay: 1 } }, // Relative base
+  tight: { 
+    label: 'Tight / Funk', 
+    config: { pitch: 1.3, decay: 0.2 } 
+  },
+  deep: { 
+    label: 'Deep / Dark', 
+    config: { pitch: 0.7, decay: 0.8 } 
+  },
+  chip: { 
+    label: '8-Bit / Chip', 
+    config: { pitch: 1.8, decay: 0.1 } 
+  },
+  industrial: { 
+    label: 'Industrial', 
+    config: { pitch: 0.5, decay: 0.2 } 
   }
 };
 
@@ -250,10 +302,35 @@ function App() {
   };
 
   const loadPreset = (presetKey: string) => {
-    if (PRESETS[presetKey]) {
-      setSequencerGrid(PRESETS[presetKey].grid);
-      setBpm(PRESETS[presetKey].bpm);
+    if (BEAT_PRESETS[presetKey]) {
+      setSequencerGrid(BEAT_PRESETS[presetKey].grid);
+      setBpm(BEAT_PRESETS[presetKey].bpm);
       if (!isPlaying) setIsPlaying(true);
+    }
+  };
+
+  const loadKit = (kitKey: string) => {
+    const kit = KIT_PRESETS[kitKey];
+    if (kit) {
+      // Apply the pitch/decay multiplier to defaults
+      setPads(prev => prev.map((pad, idx) => {
+        // Find default values for this specific pad index to avoid drift
+        const def = DEFAULT_PADS[idx]; 
+        
+        let newPitch = def.pitch;
+        let newDecay = def.decay;
+
+        if (kitKey !== 'default') {
+            newPitch = def.pitch * kit.config.pitch!;
+            newDecay = def.decay * kit.config.decay!;
+        }
+        
+        return {
+            ...pad,
+            pitch: newPitch,
+            decay: newDecay
+        };
+      }));
     }
   };
 
@@ -399,20 +476,37 @@ function App() {
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                             <h3 className="text-xl font-bold flex items-center gap-2"><Activity className="text-cyan-500" /> Sequencer</h3>
                             
-                            <div className="flex gap-2 w-full sm:w-auto items-center">
-                                {/* PRESET SELECTOR (NEW) */}
-                                <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1 border border-slate-700">
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center">
+                                {/* PRESET SELECTOR (BEATS) */}
+                                <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
                                     <Music size={14} className="ml-2 text-slate-400" />
                                     <select 
                                         onChange={(e) => {
                                             if(e.target.value) loadPreset(e.target.value);
-                                            e.target.value = ""; // Reset to placeholder
+                                            e.target.value = ""; // Reset
                                         }}
                                         className="bg-transparent text-xs font-bold text-slate-300 focus:outline-none p-1 w-24 sm:w-auto"
                                     >
                                         <option value="">Load Beat...</option>
-                                        {Object.keys(PRESETS).map(key => (
-                                            <option key={key} value={key}>{PRESETS[key].label}</option>
+                                        {Object.keys(BEAT_PRESETS).map(key => (
+                                            <option key={key} value={key}>{BEAT_PRESETS[key].label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                 {/* KIT SELECTOR (NEW) */}
+                                 <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                    <Speaker size={14} className="ml-2 text-slate-400" />
+                                    <select 
+                                        onChange={(e) => {
+                                            if(e.target.value) loadKit(e.target.value);
+                                            e.target.value = ""; // Reset
+                                        }}
+                                        className="bg-transparent text-xs font-bold text-slate-300 focus:outline-none p-1 w-24 sm:w-auto"
+                                    >
+                                        <option value="">Load Kit...</option>
+                                        {Object.keys(KIT_PRESETS).map(key => (
+                                            <option key={key} value={key}>{KIT_PRESETS[key].label}</option>
                                         ))}
                                     </select>
                                 </div>
