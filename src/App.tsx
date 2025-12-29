@@ -10,12 +10,11 @@ interface Pad {
   key: string;
   label: string;
   engine: SoundEngine;
-  type: InstrumentType; // Used if engine is 'synth'
-  sampleUrl?: string;   // Used if engine is 'sample'
+  type: InstrumentType; 
+  sampleUrl?: string;   
   color: string;
-  // Sound params
-  pitch: number;  // 0.5 to 2.0 (multiplier)
-  decay: number;  // 0.1 to 1.0 (seconds)
+  pitch: number;  
+  decay: number;  
 }
 
 // --- DEFAULT CONFIGURATION ---
@@ -64,23 +63,19 @@ function App() {
   const [currentStep, setCurrentStep] = useState(0);
   const [sequencerGrid, setSequencerGrid] = useState(INITIAL_GRID);
 
-  // --- AUDIO INIT (THE IPHONE FIX) ---
+  // --- GHOST CLICK PREVENTION ---
+  const lastTouchTimeRef = useRef<number>(0);
+
+  // --- AUDIO INIT ---
   const initAudio = () => {
-    // 1. Create the Context if it doesn't exist
     if (!audioCtxRef.current) {
       const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
       audioCtxRef.current = new AudioContext();
     }
-
     const ctx = audioCtxRef.current!;
+    if (ctx.state === 'suspended') ctx.resume();
 
-    // 2. Always try to resume (Chrome/iOS requirement)
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
-
-    // 3. THE MAGIC TRICK: Play a silent buffer
-    // This forces the iOS audio engine to "wake up" immediately
+    // Silent buffer fix for iOS
     const buffer = ctx.createBuffer(1, 1, 22050);
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -92,23 +87,19 @@ function App() {
 
   // --- AUDIO ENGINE ---
   const playSound = useCallback((pad: Pad) => {
-    // If not unlocked, try to unlock
     if (!audioCtxRef.current) initAudio();
-    
     const ctx = audioCtxRef.current!;
     if (!ctx) return;
     
-    // VISUALS
+    // Visual Trigger
     setActivePadId(pad.id);
-    setTimeout(() => setActivePadId(null), 100);
+    setTimeout(() => setActivePadId(null), 80); // Slightly faster visual reset
 
     const t = ctx.currentTime;
     const gainNode = ctx.createGain();
     gainNode.connect(ctx.destination);
     gainNode.gain.value = volume;
 
-    // --- SYNTHESIZER LOGIC ---
-    // We use the pad's stored "pitch" and "decay" to modify the sound
     if (pad.engine === 'synth') {
       if (pad.type === 'kick') {
         const osc = ctx.createOscillator();
@@ -127,17 +118,14 @@ function App() {
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
         noise.buffer = buffer;
-        
         const noiseFilter = ctx.createBiquadFilter();
         noiseFilter.type = 'highpass';
         noiseFilter.frequency.value = 1000 * pad.pitch;
         noise.connect(noiseFilter);
         noiseFilter.connect(gainNode);
-        
         const osc = ctx.createOscillator();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(100 * pad.pitch, t);
-        
         noise.start(t);
         osc.connect(gainNode);
         osc.start(t);
@@ -148,20 +136,15 @@ function App() {
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-
         const noise = ctx.createBufferSource();
         noise.buffer = buffer;
-
         const bandpass = ctx.createBiquadFilter();
         bandpass.type = 'bandpass';
         bandpass.frequency.value = 10000 * pad.pitch;
-
         noise.connect(bandpass);
         bandpass.connect(gainNode);
-
         gainNode.gain.setValueAtTime(volume * 0.8, t);
         gainNode.gain.exponentialRampToValueAtTime(0.01, t + pad.decay);
-
         noise.start(t);
       }
       else if (pad.type === 'tom') {
@@ -179,7 +162,6 @@ function App() {
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-        
         const noise = ctx.createBufferSource();
         noise.buffer = buffer;
         const filter = ctx.createBiquadFilter();
@@ -187,11 +169,9 @@ function App() {
         filter.frequency.value = 1500 * pad.pitch;
         noise.connect(filter);
         filter.connect(gainNode);
-
         gainNode.gain.setValueAtTime(0, t);
         gainNode.gain.linearRampToValueAtTime(volume, t + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.01, t + pad.decay);
-
         noise.start(t);
       }
       else if (pad.type === 'fx' || pad.type === 'crash') {
@@ -208,15 +188,37 @@ function App() {
     }
   }, [volume]);
 
+  // --- HANDLER WRAPPERS ---
+  const handleTouchStart = (e: React.TouchEvent, pad: Pad) => {
+    e.preventDefault(); // Stop iOS from firing emulated mouse events
+    lastTouchTimeRef.current = Date.now(); // Mark time
+    initAudio();
+    
+    if (editMode) {
+      setSelectedPadId(pad.id);
+    } else {
+      playSound(pad);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, pad: Pad) => {
+    // IGNORE mouse event if a touch happened less than 500ms ago
+    if (Date.now() - lastTouchTimeRef.current < 500) return;
+    
+    initAudio();
+    if (editMode) {
+      setSelectedPadId(pad.id);
+    } else {
+      playSound(pad);
+    }
+  };
+
   // --- KEYBOARD LISTENERS ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
-
       const pad = pads.find(p => p.key === e.key.toLowerCase());
-      if (pad) {
-        playSound(pad);
-      }
+      if (pad) playSound(pad);
       if (e.code === 'Space') {
           e.preventDefault();
           setIsPlaying(prev => !prev);
@@ -235,9 +237,7 @@ function App() {
         setCurrentStep((prev) => {
           const nextStep = (prev + 1) % 16;
           pads.forEach(pad => {
-            if (sequencerGrid[pad.id][nextStep]) {
-              playSound(pad);
-            }
+            if (sequencerGrid[pad.id][nextStep]) playSound(pad);
           });
           return nextStep;
         });
@@ -246,20 +246,18 @@ function App() {
     return () => clearInterval(interval);
   }, [isPlaying, bpm, sequencerGrid, playSound, pads]);
 
-  // --- MODIFIERS ---
   const updatePad = (id: number, changes: Partial<Pad>) => {
     setPads(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p));
   };
-
   const selectedPad = pads.find(p => p.id === selectedPadId);
 
   return (
     <div 
         onClick={initAudio}
-        onTouchStart={initAudio} // Try to unlock on any touch anywhere
+        onTouchStart={initAudio}
         className="min-h-screen bg-slate-950 flex flex-col items-center p-6 text-white select-none overflow-y-auto"
     >
-        {/* --- HEADER & CONTROLS --- */}
+        {/* --- HEADER --- */}
         <div className="w-full max-w-6xl flex flex-wrap gap-4 justify-between items-end mb-8 border-b border-slate-800 pb-4 sticky top-0 bg-slate-950/80 backdrop-blur z-50">
             <div>
                 <h1 className="text-4xl font-black italic tracking-tighter flex items-center gap-2">
@@ -268,7 +266,6 @@ function App() {
                 </h1>
                 <p className="text-slate-500 text-sm mt-1 font-mono">NEON DRUM SYNTHESIZER</p>
             </div>
-            
             <div className="flex items-center gap-4 bg-slate-900 p-2 rounded-xl border border-slate-800 shadow-xl">
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
@@ -276,7 +273,6 @@ function App() {
                 >
                   {isPlaying ? <Square fill="currentColor" size={20} /> : <Play fill="currentColor" size={20} />}
                 </button>
-
                 <div className="flex gap-4 px-4 border-l border-r border-slate-700">
                     <div className="flex flex-col items-center">
                         <div className="flex items-center gap-1 text-xs text-slate-500 font-mono mb-1"><Clock size={10} /> BPM</div>
@@ -287,7 +283,6 @@ function App() {
                         <input type="range" min="0" max="1" step="0.1" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="w-20 accent-cyan-500 h-1 bg-slate-700 rounded-full appearance-none my-2"/>
                     </div>
                 </div>
-
                 <button 
                     onClick={() => { setEditMode(!editMode); setSelectedPadId(null); }}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold text-sm ${editMode ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
@@ -299,8 +294,6 @@ function App() {
 
         {/* --- MAIN LAYOUT --- */}
         <div className="flex flex-col lg:flex-row gap-6 w-full max-w-6xl items-start">
-            
-            {/* --- PAD GRID --- */}
             <div className="relative">
                 {editMode && <div className="absolute -top-8 left-0 text-purple-400 text-xs font-bold animate-pulse">SELECT A PAD TO EDIT</div>}
                 
@@ -308,25 +301,10 @@ function App() {
                     {pads.map((pad) => (
                         <button
                             key={pad.id}
-                            // --- IPHONE FIX: onTouchStart with preventDefault ---
-                            onTouchStart={(e) => {
-                                e.preventDefault(); // Prevents zooming/delay
-                                initAudio();        // Forces Audio Unlock
-                                if (editMode) {
-                                    setSelectedPadId(pad.id);
-                                } else {
-                                    playSound(pad);
-                                }
-                            }}
-                            // --- DESKTOP FIX: onMouseDown ---
-                            onMouseDown={(e) => {
-                                initAudio();
-                                if (editMode) {
-                                    setSelectedPadId(pad.id);
-                                } else {
-                                    playSound(pad);
-                                }
-                            }}
+                            // 1. TOUCH: Handle touch, set timestamp
+                            onTouchStart={(e) => handleTouchStart(e, pad)}
+                            // 2. MOUSE: Check timestamp to avoid double-trigger
+                            onMouseDown={(e) => handleMouseDown(e, pad)}
                             className={`
                                 relative group rounded-xl border transition-all duration-75 
                                 flex flex-col items-center justify-center overflow-hidden touch-none select-none
@@ -357,70 +335,36 @@ function App() {
                         <div className="space-y-6">
                             <div>
                                 <label className="text-xs text-slate-500 font-bold uppercase mb-2 block">Pad Label</label>
-                                <input 
-                                    type="text" 
-                                    value={selectedPad.label} 
-                                    onChange={(e) => updatePad(selectedPad.id, { label: e.target.value })}
-                                    className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-purple-500 outline-none"
-                                />
+                                <input type="text" value={selectedPad.label} onChange={(e) => updatePad(selectedPad.id, { label: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-purple-500 outline-none" />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500 font-bold uppercase mb-2 block">Sound Type</label>
                                 <div className="grid grid-cols-4 gap-2">
                                     {['kick', 'snare', 'hihat', 'openhat', 'tom', 'clap', 'crash', 'fx'].map(type => (
-                                        <button
-                                            key={type}
-                                            onClick={() => updatePad(selectedPad.id, { type: type as InstrumentType })}
-                                            className={`p-2 rounded text-xs font-bold border ${selectedPad.type === type ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                                        >
-                                            {type.toUpperCase()}
-                                        </button>
+                                        <button key={type} onClick={() => updatePad(selectedPad.id, { type: type as InstrumentType })} className={`p-2 rounded text-xs font-bold border ${selectedPad.type === type ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'}`}>{type.toUpperCase()}</button>
                                     ))}
                                 </div>
                             </div>
                             <div className="space-y-4 bg-slate-950 p-4 rounded-lg border border-slate-800">
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <span className="text-slate-400">Pitch / Tone</span>
-                                        <span className="text-purple-400">{selectedPad.pitch.toFixed(1)}x</span>
-                                    </div>
-                                    <input type="range" min="0.1" max="2.0" step="0.1" value={selectedPad.pitch} onChange={(e) => updatePad(selectedPad.id, { pitch: parseFloat(e.target.value) })} className="w-full accent-purple-500 h-1 bg-slate-700 rounded-full appearance-none"/>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <span className="text-slate-400">Decay / Length</span>
-                                        <span className="text-purple-400">{selectedPad.decay.toFixed(1)}s</span>
-                                    </div>
-                                    <input type="range" min="0.1" max="2.0" step="0.1" value={selectedPad.decay} onChange={(e) => updatePad(selectedPad.id, { decay: parseFloat(e.target.value) })} className="w-full accent-purple-500 h-1 bg-slate-700 rounded-full appearance-none"/>
-                                </div>
+                                <div><div className="flex justify-between text-xs mb-1"><span className="text-slate-400">Pitch</span><span className="text-purple-400">{selectedPad.pitch.toFixed(1)}x</span></div><input type="range" min="0.1" max="2.0" step="0.1" value={selectedPad.pitch} onChange={(e) => updatePad(selectedPad.id, { pitch: parseFloat(e.target.value) })} className="w-full accent-purple-500 h-1 bg-slate-700 rounded-full appearance-none"/></div>
+                                <div><div className="flex justify-between text-xs mb-1"><span className="text-slate-400">Decay</span><span className="text-purple-400">{selectedPad.decay.toFixed(1)}s</span></div><input type="range" min="0.1" max="2.0" step="0.1" value={selectedPad.decay} onChange={(e) => updatePad(selectedPad.id, { decay: parseFloat(e.target.value) })} className="w-full accent-purple-500 h-1 bg-slate-700 rounded-full appearance-none"/></div>
                             </div>
                         </div>
                     </div>
                 ) : (
                     <div className={`bg-slate-900/50 p-6 rounded-2xl border border-slate-800 transition-opacity ${editMode ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold flex items-center gap-2">
-                                <Activity className="text-cyan-500" /> 
-                                Sequencer
-                            </h3>
+                            <h3 className="text-xl font-bold flex items-center gap-2"><Activity className="text-cyan-500" /> Sequencer</h3>
                             <button onClick={() => setSequencerGrid(INITIAL_GRID)} className="text-xs text-red-400 hover:text-red-300 border border-red-900 bg-red-900/20 px-3 py-1 rounded">CLEAR PATTERN</button>
                         </div>
                         <div className="flex flex-col gap-2 overflow-x-auto pb-4">
-                            <div className="flex gap-1 ml-24 mb-2">
-                                {Array(16).fill(0).map((_, i) => (
-                                    <div key={i} className={`w-6 text-center text-[10px] font-mono ${i === currentStep ? 'text-cyan-400 font-bold' : 'text-slate-600'}`}>{i + 1}</div>
-                                ))}
-                            </div>
+                            <div className="flex gap-1 ml-24 mb-2">{Array(16).fill(0).map((_, i) => (<div key={i} className={`w-6 text-center text-[10px] font-mono ${i === currentStep ? 'text-cyan-400 font-bold' : 'text-slate-600'}`}>{i + 1}</div>))}</div>
                             {pads.map((pad) => (
                                 <div key={pad.id} className="flex items-center gap-4 group hover:bg-slate-800/50 rounded pr-2">
                                     <div className={`w-20 text-xs font-bold text-right truncate ${pad.color.split(' ').pop()?.replace('text-', 'text-')}`}>{pad.label}</div>
                                     <div className="flex gap-1">
                                         {sequencerGrid[pad.id].map((isActive, step) => (
-                                            <button
-                                                key={step}
-                                                onClick={(e) => { e.stopPropagation(); setSequencerGrid(prev => ({...prev, [pad.id]: prev[pad.id].map((v, i) => i === step ? !v : v)})); }}
-                                                className={`w-6 h-8 rounded-sm border transition-all ${step === currentStep ? 'border-white scale-110 z-10' : 'border-transparent'} ${isActive ? `bg-cyan-500 hover:bg-cyan-400` : `bg-slate-800 hover:bg-slate-700`} ${step % 4 === 0 ? 'ml-1' : ''}`}
-                                            />
+                                            <button key={step} onClick={(e) => { e.stopPropagation(); setSequencerGrid(prev => ({...prev, [pad.id]: prev[pad.id].map((v, i) => i === step ? !v : v)})); }} className={`w-6 h-8 rounded-sm border transition-all ${step === currentStep ? 'border-white scale-110 z-10' : 'border-transparent'} ${isActive ? `bg-cyan-500 hover:bg-cyan-400` : `bg-slate-800 hover:bg-slate-700`} ${step % 4 === 0 ? 'ml-1' : ''}`}/>
                                         ))}
                                     </div>
                                 </div>
@@ -431,26 +375,15 @@ function App() {
             </div>
         </div>
 
-        {/* --- START OVERLAY (REQUIRED FOR IOS) --- */}
         {!audioUnlocked && (
-            <div 
-                // Add onTouchStart here too for the overlay
-                onTouchStart={initAudio}
-                onClick={initAudio}
-                className="absolute top-0 left-0 w-full h-full bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm animate-in fade-in"
-            >
+            <div onTouchStart={initAudio} onClick={initAudio} className="absolute top-0 left-0 w-full h-full bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm animate-in fade-in">
                 <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl text-center cursor-pointer max-w-sm mx-4">
                     <Activity size={48} className="mx-auto mb-4 text-cyan-500 animate-bounce" />
                     <h2 className="text-2xl font-bold mb-2">Tap to Start</h2>
                     <p className="text-slate-400 mb-4">Initialize Audio Engine</p>
-                    
-                    {/* IOS WARNING */}
                     <div className="bg-yellow-900/30 border border-yellow-700 p-3 rounded-lg flex items-start gap-3 text-left">
                         <Smartphone className="shrink-0 text-yellow-500 mt-1" size={20} />
-                        <div className="text-xs text-yellow-200">
-                            <strong>iPhone Users:</strong><br/>
-                            Please turn off "Silent Mode" (the side switch) or you will hear no sound.
-                        </div>
+                        <div className="text-xs text-yellow-200"><strong>iPhone Users:</strong><br/>Turn off "Silent Mode" (side switch) to hear sound.</div>
                     </div>
                 </div>
             </div>
