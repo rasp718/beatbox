@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Volume2, Activity, Zap, Play, Square, Clock, Settings2, Sliders, Edit3, X, Smartphone, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Volume2, Activity, Zap, Play, Square, Clock, Settings2, Sliders, Edit3, X, Smartphone, ArrowRight, ArrowLeft, Music } from 'lucide-react';
 
 // --- TYPES ---
 type SoundEngine = 'synth' | 'sample';
@@ -43,6 +43,42 @@ const DEFAULT_PADS: Pad[] = [
 
 const INITIAL_GRID: Record<number, boolean[]> = {};
 DEFAULT_PADS.forEach(pad => { INITIAL_GRID[pad.id] = Array(16).fill(false); });
+
+// --- PRESETS ---
+const PRESETS: Record<string, { label: string, bpm: number, grid: Record<number, boolean[]> }> = {
+  house: {
+    label: 'House / Techno',
+    bpm: 128,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], // Kick
+      3:  [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], // Open Hat
+      8:  [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Clap
+      4:  [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false],     // HiHat
+    }
+  },
+  hiphop: {
+    label: 'Classic Hip Hop',
+    bpm: 90,
+    grid: {
+      ...INITIAL_GRID,
+      13: [true, false, false, true, false, false, true, false, false, false, true, false, false, true, false, false], // Kick
+      9:  [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare
+      4:  [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true],     // HiHat
+    }
+  },
+  trap: {
+    label: 'Trap / Drill',
+    bpm: 140,
+    grid: {
+      ...INITIAL_GRID,
+      15: [true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false], // Sub Bass
+      10: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // Snare 2
+      4:  [true, true, true, false, true, true, true, false, true, true, true, true, true, false, true, true],           // Fast Hats
+      11: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false],   // Rim
+    }
+  }
+};
 
 function App() {
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -196,7 +232,6 @@ function App() {
     e.preventDefault();
     lastTouchTimeRef.current = Date.now();
     initAudio();
-    
     if (editMode) {
       setSelectedPadId(pad.id);
     } else {
@@ -211,6 +246,14 @@ function App() {
       setSelectedPadId(pad.id);
     } else {
       playSound(pad);
+    }
+  };
+
+  const loadPreset = (presetKey: string) => {
+    if (PRESETS[presetKey]) {
+      setSequencerGrid(PRESETS[presetKey].grid);
+      setBpm(PRESETS[presetKey].bpm);
+      if (!isPlaying) setIsPlaying(true);
     }
   };
 
@@ -356,21 +399,28 @@ function App() {
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                             <h3 className="text-xl font-bold flex items-center gap-2"><Activity className="text-cyan-500" /> Sequencer</h3>
                             
-                            <div className="flex gap-2 w-full sm:w-auto">
+                            <div className="flex gap-2 w-full sm:w-auto items-center">
+                                {/* PRESET SELECTOR (NEW) */}
+                                <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                    <Music size={14} className="ml-2 text-slate-400" />
+                                    <select 
+                                        onChange={(e) => {
+                                            if(e.target.value) loadPreset(e.target.value);
+                                            e.target.value = ""; // Reset to placeholder
+                                        }}
+                                        className="bg-transparent text-xs font-bold text-slate-300 focus:outline-none p-1 w-24 sm:w-auto"
+                                    >
+                                        <option value="">Load Beat...</option>
+                                        {Object.keys(PRESETS).map(key => (
+                                            <option key={key} value={key}>{PRESETS[key].label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 {/* MOBILE PAGE TOGGLE */}
-                                <div className="flex lg:hidden bg-slate-800 rounded-lg p-1 border border-slate-700 w-full sm:w-auto">
-                                    <button 
-                                        onClick={() => setMobilePage(0)}
-                                        className={`flex-1 sm:flex-none px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 0 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}
-                                    >
-                                        <ArrowLeft size={12} /> Steps 1-8
-                                    </button>
-                                    <button 
-                                        onClick={() => setMobilePage(1)}
-                                        className={`flex-1 sm:flex-none px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 1 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}
-                                    >
-                                        Steps 9-16 <ArrowRight size={12} />
-                                    </button>
+                                <div className="flex lg:hidden bg-slate-800 rounded-lg p-1 border border-slate-700 w-auto">
+                                    <button onClick={() => setMobilePage(0)} className={`px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 0 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}>1-8</button>
+                                    <button onClick={() => setMobilePage(1)} className={`px-3 py-1 text-xs font-bold rounded flex items-center justify-center gap-1 transition-all ${mobilePage === 1 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}>9-16</button>
                                 </div>
 
                                 <button onClick={() => setSequencerGrid(INITIAL_GRID)} className="hidden sm:block text-xs text-red-400 hover:text-red-300 border border-red-900 bg-red-900/20 px-3 py-1 rounded whitespace-nowrap">CLEAR</button>
@@ -382,13 +432,11 @@ function App() {
                             {/* Step Numbers Header */}
                             <div className="flex gap-1 ml-24 mb-2">
                                 {Array(16).fill(0).map((_, i) => (
-                                    // Logic: Only show steps that match the current mobile page, OR show all if on desktop (lg breakpoint)
                                     <div 
                                         key={i} 
                                         className={`
                                             w-8 text-center text-[10px] font-mono 
                                             ${i === currentStep ? 'text-cyan-400 font-bold' : 'text-slate-600'}
-                                            ${/* Mobile Hiding Logic */ ''}
                                             ${(i < 8 && mobilePage === 1) ? 'hidden lg:block' : ''} 
                                             ${(i >= 8 && mobilePage === 0) ? 'hidden lg:block' : ''}
                                         `}
@@ -412,7 +460,6 @@ function App() {
                                                     ${step === currentStep ? 'border-white scale-110 z-10' : 'border-transparent'}
                                                     ${isActive ? `bg-cyan-500 hover:bg-cyan-400` : `bg-slate-800 hover:bg-slate-700`}
                                                     ${step % 4 === 0 ? 'ml-1' : ''}
-                                                    ${/* Mobile Hiding Logic */ ''}
                                                     ${(step < 8 && mobilePage === 1) ? 'hidden lg:block' : ''} 
                                                     ${(step >= 8 && mobilePage === 0) ? 'hidden lg:block' : ''}
                                                 `}
